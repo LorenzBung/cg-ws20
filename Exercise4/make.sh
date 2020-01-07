@@ -1,2 +1,2 @@
 #!/bin/bash
-g++ Uebung4.cpp -o uebung4 -g -Wall -Wno-deprecated -lglut -lGL
+g++ Uebung4.cpp -o uebung4.out -g -Wall -Wno-deprecated -lglut -lGL
