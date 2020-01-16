@@ -63,8 +63,6 @@ float bK= 1.0;
 float xL= 0;
 float yL= 1000;
 float zL= 0;
-float lArr[3] = { 0.0, 1000.0f, 0.0 };
-CVec3f L(lArr);
 float angleYZ;
 float angleXZ;
 float radL= 1000;
@@ -280,7 +278,7 @@ CVec3f intersect (CVec3f EyePos, CVec3f ViewDir) {
 Color phong(CVec3f HitPos, CVec3f ViewDir) {
 	
 // Phong-Parameter
-	
+
 	//Reflexionskoeffizienten fuer die Kugelfarben
 	CVec3f Ka;		// ambient
 	Ka(0)= rK;
@@ -357,20 +355,29 @@ Color phong(CVec3f HitPos, CVec3f ViewDir) {
 	Is(1)= 1.0;
 	Is(2)= 1.0;
 	///////////////////////
+	
+	float lArr[3] = { xL, yL, zL };
+	CVec3f L(lArr);
+	
+	ViewDir = norm(ViewDir);
 
 	CVec3f lDir = norm(L - HitPos);
 	CVec3f nDir = norm(HitPos - M);
-	float id = intensity * scalar(lDir, nDir);
+	float id = intensity * max(0, scalar(lDir, nDir));
 
-	CVec3f rDir = norm(lDir - nDir * 2 * scalar(lDir, nDir));  //https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector
-	float is = intensity * pow(scalar(rDir, ViewDir), exp);
+	CVec3f rDir = nDir * 2 * scalar(lDir, nDir) - lDir;  //https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector
+	rDir = norm(rDir);
+	float is = intensity * max(0, pow(scalar(rDir, ViewDir), exp));
 
 	float ambientVecArr[3] = {Ka(0) * Ia(0), Ka(1) * Ia(1), Ka(2) * Ia(2)};
 	CVec3f ambientVec(ambientVecArr);
 
 	Color c;
-	CVec3f i = (Kd * max(0, scalar(lDir, nDir)) + Ks * pow(max(0, scalar(rDir, ViewDir)), exp)) * intensity + ambientVec;
-	c = Color(i(0), i(1), i(2));
+	CVec3f i;
+	i(0) = (Kd(0) * id + Ks(0) * is) / (Kd(0) + Ks(0)) + ambientVec(0);
+	i(1) = (Kd(1) * id + Ks(1) * is) / (Kd(1) + Ks(1)) + ambientVec(1);
+	i(2) = (Kd(2) * id + Ks(2) * is) / (Kd(2) + Ks(2)) + ambientVec(2);
+	c = Color(min(1, i(0)), min(1, i(1)), min(1, i(2)));
 	return c;
 }
 
@@ -392,7 +399,7 @@ void rayCast() {
 			
 			CVec3f hit= intersect(e,v);
 			
-			Color c = Color(1,1,1); // Hintergrund weiﬂ
+			Color c = Color(0, 0, 0); // Hintergrund weiﬂ
 			if (hit(2) != -1) {
 				c= phong(hit,v);
 			}
@@ -493,18 +500,37 @@ void keyboard(unsigned char c, int x, int y) {
 				bK += 0.05;
 			}
 			break;
-
-		/////////////////////////////////
-
-
-		/////////////////////////////////
-
-		
-		/////////////////////////////////
-
-
-		default:	cout << "Please use 'x', 'X', 'y' and 'Y' for moving the light source" << endl << "or 'r', 'R', 'g', 'G', 'b' and 'B' to change the color of the sphere." << endl; 
-					break;
+		case 'l':
+			if (intensity > 0) {
+				intensity -= 0.05;
+			}
+			break;
+		case 'L':
+			if (intensity < 1) {
+				intensity += 0.05;
+			}
+			break;
+		case 'f':
+		case 'F':
+			rK = 1.0;
+			gK = 1.0;
+			bK = 1.0;
+			xL = 0.0;
+			yL = 1000.0;
+			zL = 0.0;
+			intensity = 1.0;
+			break;
+		case 'q':
+		case 'Q':
+			exit(0);
+			break;
+		default:
+			cout << "Please use 'x', 'X', 'y' and 'Y' for moving the light source" << endl;
+			cout << "or 'r', 'R', 'g', 'G', 'b' and 'B' to change the color of the sphere" << endl;
+			cout << "or 'l' or 'L' to change the light intensity" << endl;
+			cout << "or 'f' or 'F' to reset" << endl;
+			cout << "or 'q' or 'Q' to quit." << endl; 
+			break;
 	}
 	rayCast();	
 	glutPostRedisplay();
