@@ -60,7 +60,7 @@ float gK= 1.0;
 float bK= 1.0;
 
 // Licht
-float xL= 0;
+float xL= 100;
 float yL= 1000;
 float zL= 0;
 float angleYZ;
@@ -216,7 +216,7 @@ void setQuad(Point p, Color c) {
 float abcpos(float a, float b, float c) {
 	float undersqrt = pow(b, 2) - 4 * a * c;
 	if (undersqrt < 0) {
-		return NULL;
+		return -1;
 	}
 	else {
 		float x = (-b + sqrt(pow(b, 2) - 4 * a * c)) / 2 * a;
@@ -226,7 +226,7 @@ float abcpos(float a, float b, float c) {
 float abcneg(float a, float b, float c) {
 	float undersqrt = pow(b, 2) - 4 * a * c;
 	if (undersqrt < 0) {
-		return NULL;
+		return -1;
 	}
 	else {
 		float x = (-b - sqrt(pow(b, 2) - 4 * a * c)) / 2 * a;
@@ -249,27 +249,15 @@ CVec3f intersect (CVec3f EyePos, CVec3f ViewDir) {
 	float t2 = abcneg(scalar(ViewDir, ViewDir), 2 * scalar(ViewDir, EyePos - M), scalar(EyePos - M, EyePos - M) - R * R);
 	
 	float t;
-	if (t1 != NULL && t2 != NULL) {
-		if (t1 < 0) {
-			t = t2;
-		}
-		else if (t2 < 0) {
-			t = t1;
-		}
-		else {
-			t = min(t1, t2);
-		}
-	}
-	else if (t1 == NULL && t2 != NULL) {
+	if (t1 < 0 && t2 >= 0) {
 		t = t2;
-	}
-	else if (t1 != NULL && t2 == NULL) {
+	} else if (t1 >= 0 && t2 < 0) {
 		t = t1;
+	} else if (t1 >= 0 && t2 >= 0) {
+		t = min(t1, t2);
+	} else {
+		return EyePos;
 	}
-	else {
-		t = NULL;
-	}
-
 	hit = EyePos + ViewDir * t;
 
 	return hit;
@@ -359,7 +347,20 @@ Color phong(CVec3f HitPos, CVec3f ViewDir) {
 	float lArr[3] = { xL, yL, zL };
 	CVec3f L(lArr);
 	
-	ViewDir = norm(ViewDir);
+	float sum0 = Kd(0) + Ks(0) + Ka(0);
+	float sum1 = Kd(1) + Ks(1) + Ka(1);
+	float sum2 = Kd(2) + Ks(2) + Ka(2);
+	Kd(0) = Kd(0) * (1 / sum0);
+	Ks(0) = Ks(0) * (1 / sum0);
+	Ka(0) = Ka(0) * (1 / sum0);
+	Kd(1) = Kd(1) * (1 / sum1);
+	Ks(1) = Ks(1) * (1 / sum1);
+	Ka(1) = Ka(1) * (1 / sum1);
+	Kd(2) = Kd(2) * (1 / sum2);
+	Ks(2) = Ks(2) * (1 / sum2);
+	Ka(2) = Ka(2) * (1 / sum2);
+	
+	ViewDir = norm(ViewDir * -1);
 
 	CVec3f lDir = norm(L - HitPos);
 	CVec3f nDir = norm(HitPos - M);
@@ -367,17 +368,20 @@ Color phong(CVec3f HitPos, CVec3f ViewDir) {
 
 	CVec3f rDir = nDir * 2 * scalar(lDir, nDir) - lDir;  //https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector
 	rDir = norm(rDir);
-	float is = intensity * max(0, pow(scalar(rDir, ViewDir), exp));
+	float is = intensity * pow(max(0, scalar(rDir, ViewDir)), exp);
 
 	float ambientVecArr[3] = {Ka(0) * Ia(0), Ka(1) * Ia(1), Ka(2) * Ia(2)};
 	CVec3f ambientVec(ambientVecArr);
 
 	Color c;
 	CVec3f i;
-	i(0) = (Kd(0) * id + Ks(0) * is) / (Kd(0) + Ks(0)) + ambientVec(0);
-	i(1) = (Kd(1) * id + Ks(1) * is) / (Kd(1) + Ks(1)) + ambientVec(1);
-	i(2) = (Kd(2) * id + Ks(2) * is) / (Kd(2) + Ks(2)) + ambientVec(2);
-	c = Color(min(1, i(0)), min(1, i(1)), min(1, i(2)));
+	i(0) = (Kd(0) * id + Ks(0) * is) + ambientVec(0);
+	i(1) = (Kd(1) * id + Ks(1) * is) + ambientVec(1);
+	i(2) = (Kd(2) * id + Ks(2) * is) + ambientVec(2);
+	//i(0) = (Ks(0) * is);
+	//i(1) = (Ks(1) * is);
+	//i(2) = (Ks(2) * is);
+	c = Color(i(0), i(1), i(2));
 	return c;
 }
 
